@@ -161,19 +161,23 @@ def generate_street():
 def replace_phone(text: str) -> str:
     pattern = r"\b\+?(?=(?:\D*\d){10,12}\D*\b)(?:\d[\d\s\-()]{7,20}\d{2,})"
     text = re.sub(pattern, "<PHONE>", text)
-    return text
+    text = re.sub(r'\+\s*<PHONE>', "<PHONE>", text)
+    text = re.sub(r'\s*<PHONE>', " <PHONE>", text)
+    return text.strip()
 
 
 def replace_email(text: str) -> str:
     pattern = r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,10}"
     text = re.sub(pattern, "<EMAIL>", text)
-    return text
+    text = re.sub(r'\s*<EMAIL>', " <EMAIL>", text)
+    return text.strip()
 
 
 def replace_snils(text: str, type_='token') -> str:
     pattern = r"\b\d{3}[-\s]?\d{3}[-\s]?\d{3} \d{2}\b"
     text = re.sub(pattern, "<SNILS>", text)
-    return text
+    text = re.sub(r'\s*<SNILS>', " <SNILS>", text)
+    return text.strip()
 
 
 def replace_inn(text: str) -> str:
@@ -186,7 +190,9 @@ def replace_inn(text: str) -> str:
 
     for pattern in patterns:
         text = re.sub(pattern, '<INN>', text)
-    return text
+
+    text = re.sub(r'\s*<INN>', " <INN>", text)
+    return text.strip()
 
 
 def replace_bank_account(text: str) -> str:
@@ -195,7 +201,8 @@ def replace_bank_account(text: str) -> str:
     ]
     for pattern in patterns:
         text = re.sub(pattern, '<BANK_ACCOUNT>', text)
-    return text
+    text = re.sub(r'\s*<BANK_ACCOUNT>', " <BANK_ACCOUNT>", text)
+    return text.strip()
 
 
 def replace_bik(text: str) -> str:
@@ -204,13 +211,15 @@ def replace_bik(text: str) -> str:
     ]
     for pattern in patterns:
         text = re.sub(pattern, '<BIC>', text, flags=re.IGNORECASE)
-    return text
+    text = re.sub(r'\s*<BIC>', " <BIC>", text)
+    return text.strip()
 
 
 def replace_site(text: str) -> str:
-    pattern = r"https?://(?:www\.)?[a-zA-Z0-9]+\.[a-zA-Z]+(?:/[a-zA-Z0-9]+)*"
+    pattern = r"https?://[a-zA-Z-\./&?\w\d]*"
     text = re.sub(pattern, "<SITE>", text)
-    return text
+    text = re.sub(r'\s*<SITE>', " <SITE>", text)
+    return text.strip()
 
 
 def replace_passport(text: str) -> str:
@@ -228,113 +237,62 @@ def replace_passport(text: str) -> str:
         # print(text)
         text = re.sub(passport_pattern, replace_match, text, flags=re.IGNORECASE | re.DOTALL)
 
-    return text
+    text = re.sub(r'\s*<PASSPORT>', " <PASSPORT>", text)
+
+    return text.strip()
 
 
 def replace_money(text: str) -> str:
     pattern = r"(\d[\s\d]*(?:\.\d+)?)\s*(?:\([а-яА-ЯёЁ\s]*\))?(\s*[$€£₽]+|\s*руб|\s*р\.|\s*USD|\s*usd)"
     text = re.sub(pattern, lambda m: '<SUM>' +  m.group(2), text, flags=re.IGNORECASE)
-    return text
+    text = re.sub(r'\s*<SUM>', " <SUM>", text)
+    return text.strip()
 
 
-def replace_date(text, type_='token') -> str:
-    allowed_types = ['token', 'mask', 'fake']
-    if type_ not in allowed_types:
-        raise ValueError(f"Invalid type. Allowed types: {allowed_types}")
-
-    # Общая функция для маскирования текста
-    def mask_pattern(match):
-        return match.group(0)[:1] + "*" * max(3, len(match.group(0)) - 2) + match.group(0)[-1:]
-
-    # Общая функция для генерации фейковой даты
-    def fake_pattern(match):
-        return fake.date()
+def replace_date(text) -> str:
 
     # 4. Замена даты с указанием времени в формате ДД.ММ.ГГГГ ЧЧ:ММ
     pattern4 = r'\b\d{2}\.\d{2}\.\d{4} \d{2}:\d{2}\b'
-    if type_ == 'token':
-        text = re.sub(pattern4, '<<DATE>TIME>', text)
-    elif type_ == 'mask':
-        text = re.sub(pattern4, lambda m: m.group(0)[:1] + "*" * max(3, len(m.group(0)) - 2) + m.group(0)[-1:],
-                      text)
-    elif type_ == 'fake':
-        text = re.sub(pattern4, lambda m: fake.date() + " " + fake.time(), text)
+    text = re.sub(pattern4, '<DATETIME>', text)
 
     # 5. Замена даты с указанием времени в формате ГГГГ-ММ-ДДTЧЧ:ММ:СС
     pattern5 = r'\b\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\b'
-    if type_ == 'token':
-        text = re.sub(pattern5, '<<DATE>TIME>', text)
-    elif type_ == 'mask':
-        text = re.sub(pattern5, mask_pattern, text)
-    elif type_ == 'fake':
-        text = re.sub(pattern5, lambda m: fake.iso8601(), text)
+    text = re.sub(pattern5, '<DATETIME>', text)
 
     # 1. Замена даты в формате ДД.ММ.ГГГГ
     pattern1 = r'\b\d{2}\.\d{2}\.\d{4}\b'
-    if type_ == 'token':
-        text = re.sub(pattern1, '<DATE>', text)
-    elif type_ == 'mask':
-        text = re.sub(pattern1, mask_pattern, text)
-    elif type_ == 'fake':
-        text = re.sub(pattern1, fake_pattern, text)
+
+    text = re.sub(pattern1, '<DATE>', text)
 
     # 2. Замена даты в формате ГГГГ-ММ-ДД (ISO 8601)
     pattern2 = r'\b\d{4}-\d{2}-\d{2}\b'
-    if type_ == 'token':
-        text = re.sub(pattern2, '<DATE>', text)
-    elif type_ == 'mask':
-        text = re.sub(pattern2, mask_pattern, text)
-    elif type_ == 'fake':
-        text = re.sub(pattern2, fake_pattern, text)
+    text = re.sub(pattern2, '<DATE>', text)
 
     # 3. Замена даты в формате ММ/ДД/ГГГГ
     pattern3 = r'\b\d{2}/\d{2}/\d{4}\b'
-    if type_ == 'token':
-        text = re.sub(pattern3, '<DATE>', text)
-    elif type_ == 'mask':
-        text = re.sub(pattern3, mask_pattern, text)
-    elif type_ == 'fake':
-        text = re.sub(pattern3, fake_pattern, text)
-
+    text = re.sub(pattern3, '<DATE>', text)
 
     # 6. Замена текстовых обозначений дат (например, "сегодня", "вчера")
     pattern6 = r'\b(сегодня|вчера|завтра|позавчера|послезавтра)\b'
-    if type_ == 'token':
-        text = re.sub(pattern6, '<DATE>', text, flags=re.IGNORECASE)
-    elif type_ == 'mask':
-        text = re.sub(pattern6, lambda m: m.group(0)[0] + "*" * (len(m.group(0)) - 2) + m.group(0)[-1], text, flags=re.IGNORECASE)
-    elif type_ == 'fake':
-        text = re.sub(pattern6, fake_pattern, text)
+    text = re.sub(pattern6, '<DATE>', text, flags=re.IGNORECASE)
 
     # 7. Замена даты в формате ДД-ММ-ГГГГ
     pattern7 = r'\b\d{2}-\d{2}-\d{4}\b'
-    if type_ == 'token':
-        text = re.sub(pattern7, '<DATE>', text)
-    elif type_ == 'mask':
-        text = re.sub(pattern7, mask_pattern, text)
-    elif type_ == 'fake':
-        text = re.sub(pattern7, fake_pattern, text)
+    text = re.sub(pattern7, '<DATE>', text)
 
     # 8. Замена даты в формате ДД МММ ГГГГ (текстовые месяцы)
     months = r'(января|февраля|марта|апреля|мая|июня|июля|августа|сентября|октября|ноября|декабря)'
     pattern8 = r'\b(.{1,2})?\d{1,2}\s*(.{1,2})?\s*<months>\s*(.{1,2})?\d{4}'.replace('<months>', months)
-    if type_ == 'token':
-        text = re.sub(pattern8, '<DATE>', text, flags=re.IGNORECASE)
-    elif type_ == 'mask':
-        text = re.sub(pattern8, lambda m: m.group(0)[0] + "*" * (len(m.group(0)) - 2) + m.group(0)[-1], text, flags=re.IGNORECASE)
-    elif type_ == 'fake':
-        text = re.sub(pattern8, fake_pattern, text)
+    text = re.sub(pattern8, '<DATE>', text, flags=re.IGNORECASE)
 
     # 10. Замена даты в нестандартном формате ГГГГММДД
     pattern10 = r'\b\d{8}\b'
-    if type_ == 'token':
-        text = re.sub(pattern10, '<DATE>', text)
-    elif type_ == 'mask':
-        text = re.sub(pattern10, mask_pattern, text)
-    elif type_ == 'fake':
-        text = re.sub(pattern10, fake_pattern, text)
+    text = re.sub(pattern10, '<DATE>', text)
 
-    return text
+    text = re.sub(r'\s*<DATE>', " <DATE>", text)
+    text = re.sub(r'\s*<DATETIME>', " <DATETIME>", text)
+
+    return text.strip()
 
 
 def replace_digit(text: str) -> str:
@@ -352,7 +310,7 @@ def replace_street(text: str) -> str:
     for pattern in patterns:
         text = re.sub(pattern, 'ул. <STREET>', text, flags=re.IGNORECASE)
 
-    return text
+    return text.strip()
 
 
 def replace_building(text: str) -> str:
@@ -363,7 +321,7 @@ def replace_building(text: str) -> str:
     for pattern in patterns:
         text = re.sub(pattern, 'д. <BNUM>', text, flags=re.IGNORECASE)
 
-    return text
+    return text.strip()
 
 
 def replace_apartment(text: str) -> str:
@@ -382,7 +340,7 @@ def replace_apartment(text: str) -> str:
     for pattern in patterns:
         text = re.sub(pattern, 'кв. <ANUM>', text, flags=re.IGNORECASE)
 
-    return text
+    return text.strip()
 
 
 def replace_city(text: str) -> str:
@@ -412,7 +370,7 @@ def replace_city(text: str) -> str:
     for pattern in patterns:
         text = re.sub(pattern, 'г. <CITY>', text, flags=re.IGNORECASE)
 
-    return text
+    return text.strip()
 
 
 def replace_fioii(text: str) -> str:
@@ -434,8 +392,8 @@ def replace_fioii(text: str) -> str:
 
     for pattern in patterns:
         text = re.sub(pattern, '<PER>', text, flags=re.DOTALL)
-
-    return text
+    text = re.sub(r'\s*<PER>', " <PER>", text)
+    return text.strip()
 
 
 #### FAKE TAGS REPLACER ####
@@ -445,6 +403,9 @@ def fake_tag(text: str) -> str:
     text = re.sub(pattern, lambda m: fake.phone_number(), text)
 
     pattern = r'<DATE>'
+    text = re.sub(pattern, lambda m: fake.date(), text)
+
+    pattern = r'<DATETIME>'
     text = re.sub(pattern, lambda m: fake.date(), text)
 
     pattern = r'<EMAIL>'
@@ -525,6 +486,9 @@ def fake_tag(text: str) -> str:
     pattern = r'<BIC>'
     text = re.sub(pattern, lambda m: 'БИК: ' + generate_num_s(9), text)
 
+    pattern = r'<SITE>'
+    text = re.sub(pattern, lambda m: fake.uri(), text)
+
     return text
 
 
@@ -545,6 +509,7 @@ def make_anonym(text, type_='token', repalce_digits=False):
     text = replace_snils(text)
     text = replace_phone(text)
     text = replace_email(text)
+    text = replace_site(text)
 
     text = replace_money(text)
     if repalce_digits:
@@ -574,22 +539,22 @@ def test_all():
 
     # print(replace_phone("Мой телефон: +7 (999) 123-45-67, мое имя Иван"))
     print(replace_phone("Мой телефон: +7 (999) 123-45-67, мое имя Иван"))
-    assert replace_phone("Мой телефон: +7 (999) 123-45-67, мое имя Иван") == "Мой телефон: +<PHONE>, мое имя Иван"
+    assert replace_phone("Мой телефон: +7 (999) 123-45-67, мое имя Иван") == "Мой телефон: <PHONE>, мое имя Иван"
     assert replace_phone("Мой телефон: 8-999-123-45-67, мое имя Иван") == "Мой телефон: <PHONE>, мое имя Иван"
     assert replace_phone("Мой телефон: 89991234567, мое имя Иван") == "Мой телефон: <PHONE>, мое имя Иван"
 
     # Тест кейс 1: Номер с пробелами внутри
-    assert replace_phone("Телефон: +7 999 123 45 67") == "Телефон: +<PHONE>"
+    assert replace_phone("Телефон: +7 999 123 45 67") == "Телефон: <PHONE>"
 
     # Тест кейс 2: Номер в конце строки
     assert replace_phone("Позвоните мне по номеру 8-999-123-45-67") == "Позвоните мне по номеру <PHONE>"
 
     # Тест кейс 3: Несколько номеров в тексте (должен заменить все)
     print(replace_phone("Мои телефоны: +7(999)123-45-67, 8-999-123-45-67"))
-    assert replace_phone("Мои телефоны: +7(999)123-45-67, 8-999-123-45-67") == "Мои телефоны: +<PHONE>, <PHONE>"
+    assert replace_phone("Мои телефоны: +7(999)123-45-67, 8-999-123-45-67") == "Мои телефоны: <PHONE>, <PHONE>"
 
     # Тест кейс 4: Номер с различными разделителями
-    assert replace_phone("Телефон: +7-999-123-45-67") == "Телефон: +<PHONE>"
+    assert replace_phone("Телефон: +7-999-123-45-67") == "Телефон: <PHONE>"
 
     # Тест кейс 5: Короткий номер (например, внутренний)
     assert replace_phone("Для связи используйте телефон 1234") == "Для связи используйте телефон 1234"
@@ -602,7 +567,7 @@ def test_all():
     assert replace_phone("Для связи используйте телефон 1234567890123") == "Для связи используйте телефон 1234567890123"
 
     # Тест кейс 6: Номер с кодом страны и городским форматом
-    assert replace_phone("Телефон компании: +7 (495) 123-45-67") == "Телефон компании: +<PHONE>"
+    assert replace_phone("Телефон компании: +7 (495) 123-45-67") == "Телефон компании: <PHONE>"
 
     # Тест кейс 7: Номер внутри строки с другими числами
     print(replace_phone(
@@ -612,14 +577,14 @@ def test_all():
 
     # Тест кейс 8: Номер с дополнительными символами (скобки, тире, точки)
     print(replace_phone("Телефон: (8-999) 123 45 67"))
-    assert replace_phone("Телефон: (8-999) 123 45 67") == "Телефон: (<PHONE>"
+    assert replace_phone("Телефон: (8-999) 123 45 67") == "Телефон: ( <PHONE>"
 
     # Тест кейс 9: Международный формат номера
-    assert replace_phone("Контактный телефон: +1 (202) 555-0133") == "Контактный телефон: +<PHONE>"
+    assert replace_phone("Контактный телефон: +1 (202) 555-0133") == "Контактный телефон: <PHONE>"
 
     # Тест кейс 10: Сложный случай с комбинацией разных форматов
     assert replace_phone(
-        "Напишите нам на email@example.com или позвоните: +7(999)123-45-67, 8-999-123-45-67") == "Напишите нам на email@example.com или позвоните: +<PHONE>, <PHONE>"
+        "Напишите нам на email@example.com или позвоните: +7(999)123-45-67, 8-999-123-45-67") == "Напишите нам на email@example.com или позвоните: <PHONE>, <PHONE>"
 
     assert replace_email("Мои данные example@example.com, мое имя Иван") == "Мои данные <EMAIL>, мое имя Иван"
     assert replace_email(
@@ -657,10 +622,10 @@ def test_all():
 
     # 4. Формат ДД.ММ.ГГГГ ЧЧ:ММ
     print(replace_date("Начало мероприятия 31.12.2025 18:00"))
-    assert replace_date("Начало мероприятия 31.12.2025 18:00") == "Начало мероприятия <<DATE>TIME>"
+    assert replace_date("Начало мероприятия 31.12.2025 18:00") == "Начало мероприятия <DATETIME>"
 
     # 5. Формат ГГГГ-ММ-ДДTЧЧ:ММ:СС
-    assert replace_date("Лог записан 2025-12-31T18:00:00") == "Лог записан <<DATE>TIME>"
+    assert replace_date("Лог записан 2025-12-31T18:00:00") == "Лог записан <DATETIME>"
 
     # 6. Текстовые обозначения дат
     assert replace_date("Это случится сегодня") == "Это случится <DATE>"
@@ -671,7 +636,7 @@ def test_all():
     assert replace_date("Конец действия 31-12-2025") == "Конец действия <DATE>"
 
     # 8. Формат ДД МММ ГГГГ (текстовые месяцы)
-    assert replace_date("Рождение 31 декабря 2025") == "Рождение<DATE>"
+    assert replace_date("Рождение 31 декабря 2025") == "Рождение <DATE>"
 
     # 9. Диапазон дат
     assert replace_date("Период с 01.01.2025 по 31.12.2025") == "Период с <DATE> по <DATE>"
@@ -679,56 +644,6 @@ def test_all():
     # 10. Нестандартный формат ГГГГММДД
     assert replace_date("Дата записи 20251231") == "Дата записи <DATE>"
 
-    # Примечание: Для type_='fake', результат зависит от генерации Faker, поэтому используется проверка на наличие паттерна.
-
-    # 1. Формат ДД.ММ.ГГГГ
-    result = replace_date("Срок действия до 31.12.2025", 'fake')
-    print(result)
-    assert re.match(r"Срок действия до \d{4}-\d{2}-\d{2}", result)
-
-    # 2. Формат ГГГГ-ММ-ДД (ISO 8601)
-    result = replace_date("Дата создания 2025-12-31", 'fake')
-    assert re.match(r"Дата создания \d{4}-\d{2}-\d{2}", result)
-
-    # 3. Формат ММ/ДД/ГГГГ
-    result = replace_date("Платеж выполнен 12/31/2025", 'fake')
-    assert re.match(r"Платеж выполнен \d{4}-\d{2}-\d{2}", result)
-
-    # 4. Формат ДД.ММ.ГГГГ ЧЧ:ММ
-    result = replace_date("Начало мероприятия 31.12.2025 18:00", 'fake')
-    assert re.match(r"Начало мероприятия \d{4}-\d{2}-\d{2}", result)
-
-    # 5. Формат ГГГГ-ММ-ДДTЧЧ:ММ:СС
-    result = replace_date("Лог записан 2025-12-31T18:00:00", 'fake')
-    assert re.match(r"Лог записан \d{4}-\d{2}-\d{2}", result)
-
-    # 6. Текстовые обозначения дат
-    result = replace_date("Это случится сегодня", 'fake')
-    assert re.match(r"Это случится \d{4}-\d{2}-\d{2}", result)
-
-    result = replace_date("Это было вчера", 'fake')
-    assert re.match(r"Это было \d{4}-\d{2}-\d{2}", result)
-
-    result = replace_date("Это будет завтра", 'fake')
-    assert re.match(r"Это будет \d{4}-\d{2}-\d{2}", result)
-
-    # 7. Формат ДД-ММ-ГГГГ
-    result = replace_date("Конец действия 31-12-2025", 'fake')
-    assert re.match(r"Конец действия \d{4}-\d{2}-\d{2}", result)
-
-    # 8. Формат ДД МММ ГГГГ (текстовые месяцы)
-    result = replace_date("Рождение 31 декабря 2025", 'fake')
-    assert re.match(r"Рождение\d{4}-\d{2}-\d{2}", result, re.IGNORECASE)
-
-    # 9. Диапазон дат
-    result = replace_date("Период с 01.01.2025 по 31.12.2025", 'fake')
-    assert re.match(r"Период с \d{4}-\d{2}-\d{2} по \d{4}-\d{2}-\d{2}", result)
-
-    # 10. Нестандартный формат ГГГГММДД
-    result = replace_date("Дата записи 20251231", 'fake')
-    assert re.match(r"Дата записи \d{4}-\d{2}-\d{2}", result)
-
-    # Тест для type_='token'
     assert replace_digit("My number is 12345") == "My number is <DIGIT><5>"
     assert replace_digit("There are 7 days in a week") == "There are <DIGIT><1> days in a week"
 
@@ -850,8 +765,8 @@ def test_all():
 
     # С пробелами и табуляцией
     print(replace_passport("паспорт\t349876\t4595"))
-    assert replace_passport("паспорт\t349876\t4595") == "паспорт\t<PASSPORT>"
-    assert replace_passport("паспорт  \t 349876   4595") == "паспорт  \t <PASSPORT>"
+    assert replace_passport("паспорт\t349876\t4595") == "паспорт <PASSPORT>"
+    assert replace_passport("паспорт  \t 349876   4595") == "паспорт <PASSPORT>"
 
     # В разных регистрах
     assert replace_passport("ПАСПОРТ 349876 4595") == "ПАСПОРТ <PASSPORT>"
@@ -893,43 +808,43 @@ def test_all():
 
     # Разные разделители
     print(replace_fioii("Заместитель директора - Сидоров А.А."))
-    assert replace_fioii("Заместитель директора - Сидоров А.А.") == "Заместитель директора -<PER>"
+    assert replace_fioii("Заместитель директора - Сидоров А.А.") == "Заместитель директора - <PER>"
     print(replace_fioii("Главный инженер (Петров В.В.)"))
     assert replace_fioii("Главный инженер (Петров В.В.)") == "Главный инженер <PER>)"
     print(replace_fioii("Преподаватель, Кузнецов Д.М."))
-    assert replace_fioii("Преподаватель, Кузнецов Д.М.") == "Преподаватель,<PER>"
+    assert replace_fioii("Преподаватель, Кузнецов Д.М.") == "Преподаватель, <PER>"
 
     # С разными окончаниями фамилий
-    assert replace_fioii("Начальник отдела Смирновой М.А.") == "Начальник отдела<PER>"
-    assert replace_fioii("Старший менеджер Романова О.К.") == "Старший менеджер<PER>"
+    assert replace_fioii("Начальник отдела Смирновой М.А.") == "Начальник отдела <PER>"
+    assert replace_fioii("Старший менеджер Романова О.К.") == "Старший менеджер <PER>"
 
     # С двоеточием и запятыми
-    assert replace_fioii("Ответственный: Попов С.С.") == "Ответственный:<PER>"
+    assert replace_fioii("Ответственный: Попов С.С.") == "Ответственный: <PER>"
     print(replace_fioii("Автор книги: И.А. Николаев"))
-    assert replace_fioii("Автор книги: И.А. Николаев") == "Автор книги:<PER>"
+    assert replace_fioii("Автор книги: И.А. Николаев") == "Автор книги: <PER>"
 
     # С заглавными буквами
-    assert replace_fioii("ГЕНЕРАЛЬНЫЙ ДИРЕКТОР Путин В.В.") == "ГЕНЕРАЛЬНЫЙ ДИРЕКТОР<PER>"
-    assert replace_fioii("ПОМОЩНИК: А.А. Михайлов") == "ПОМОЩНИК:<PER>"
+    assert replace_fioii("ГЕНЕРАЛЬНЫЙ ДИРЕКТОР Путин В.В.") == "ГЕНЕРАЛЬНЫЙ ДИРЕКТОР <PER>"
+    assert replace_fioii("ПОМОЩНИК: А.А. Михайлов") == "ПОМОЩНИК: <PER>"
 
     # С различными падежами
-    assert replace_fioii("Договор с Ивановым И.И.") == "Договор с<PER>"
-    assert replace_fioii("Письмо от Петрова А.А.") == "Письмо от<PER>"
-    assert replace_fioii("Подпись под документом Сидоровым Д.Д.") == "Подпись под документом<PER>"
+    assert replace_fioii("Договор с Ивановым И.И.") == "Договор с <PER>"
+    assert replace_fioii("Письмо от Петрова А.А.") == "Письмо от <PER>"
+    assert replace_fioii("Подпись под документом Сидоровым Д.Д.") == "Подпись под документом <PER>"
 
     # Сокращения должностей
-    assert replace_fioii("Гл. бухгалтер Козлова Л.Л.") == "Гл. бухгалтер<PER>"
+    assert replace_fioii("Гл. бухгалтер Козлова Л.Л.") == "Гл. бухгалтер <PER>"
     print(replace_fioii("Техн. директор Васильев В.В."))
     assert replace_fioii("Техн. директор Васильев В.В.") == "Техн. <PER>"
 
     # С пробелами вокруг знаков препинания
-    assert replace_fioii("Преподаватель , Иванов А.А.") == "Преподаватель ,<PER>"
-    assert replace_fioii("Ответственный : Петров В.В.") == "Ответственный :<PER>"
+    assert replace_fioii("Преподаватель , Иванов А.А.") == "Преподаватель , <PER>"
+    assert replace_fioii("Ответственный : Петров В.В.") == "Ответственный : <PER>"
 
     # Фамилии с дефисом
     print(replace_fioii("Директор Петров-Васильев А.А."))
-    assert replace_fioii("Директор Петров-Васильев А.А.") == "<PER><PER>"
-    assert replace_fioii("Главный специалист Иванова-Сидорова М.М.") == "Главный специалист<PER>"
+    assert replace_fioii("Директор Петров-Васильев А.А.") == "<PER> <PER>"
+    assert replace_fioii("Главный специалист Иванова-Сидорова М.М.") == "Главный специалист <PER>"
 
     # Сложные предложения
     print(replace_fioii("Встреча с директором Ивановым И.И. прошла успешно."))
@@ -1010,7 +925,7 @@ def test_all():
     # Тест-кейс 1: Смешанные данные с телефонами, email и датами
     print(make_anonym("Контакты: +7(999)123-45-67, example@example.com, Дата рождения: 31.12.2000"))
     assert make_anonym("Контакты: +7(999)123-45-67, example@example.com, Дата рождения: 31.12.2000") == \
-           "Контакты: +<PHONE>, <EMAIL>, Дата рождения: <DATE>"
+           "Контакты: <PHONE>, <EMAIL>, Дата рождения: <DATE>"
 
     # Тест-кейс 2: Финансовые данные с номерами и датами
     print(make_anonym("Счет №123456, открытие 2023-01-15, баланс 10000 рублей"))
@@ -1020,7 +935,7 @@ def test_all():
     # Тест-кейс 3: Разнообразные форматы телефонов и <SNILS>
     print(make_anonym("Телефоны: 8-999-123-45-67, +7 (987) 654-32-10, СНИЛС: 123-456-789 01"))
     assert make_anonym("Телефоны: 8-999-123-45-67, +7 (987) 654-32-10, СНИЛС: 123-456-789 01") == \
-           "Телефоны: <PHONE>, +<PHONE>, СНИЛС: <SNILS>"
+           "Телефоны: <PHONE>, <PHONE>, СНИЛС: <SNILS>"
 
     # Тест-кейс 4: Email, телефоны и денежные суммы
     assert make_anonym(
@@ -1031,21 +946,21 @@ def test_all():
     print(make_anonym("Отчет за период 01.01.2023 - 31.12.2023, сумма: 12345.67 €, ответственный: +7(999)999-99-99",
                       'token'))
     assert make_anonym("Отчет за период 01.01.2023 - 31.12.2023, сумма: 12345.67 €, ответственный: +7(999)999-99-99") == \
-           "Отчет за период <DATE> - <DATE>, сумма: <SUM>€, ответственный: +<PHONE>"
+           "Отчет за период <DATE> - <DATE>, сумма: <SUM>€, ответственный: <PHONE>"
 
     # Тест-кейс 6: Комбинация всех типов данных
     print(make_anonym(
         "Договор №12345 от 2023-05-15, клиент: Ivanov I.I., тел.: +7(999)123-45-67, email: ivanov@mail.ru, СНИЛС: 123-456-789 01, сумма: 100000 руб."))
     assert make_anonym(
         "Договор №12345 от 2023-05-15, клиент: Ivanov I.I., тел.: +7(999)123-45-67, email: ivanov@mail.ru, СНИЛС: 123-456-789 01, сумма: 100000 руб.") == \
-           "Договор №12345 от <DATE>, клиент: Ivanov I.I., тел.: +<PHONE>, email: <EMAIL>, СНИЛС: <SNILS>, сумма: <SUM>руб."
+           "Договор №12345 от <DATE>, клиент: Ivanov I.I., тел.: <PHONE>, email: <EMAIL>, СНИЛС: <SNILS>, сумма: <SUM>руб."
 
     # Тест-кейс 7: Несколько дат разных форматов и телефонов
     print(make_anonym(
         "Встреча назначена на 15/05/2023 в 14:00, напомнить за день: 2023-05-14, контакты: +79991234567, (8-987)654-32-10"))
     assert make_anonym(
         "Встреча назначена на 15/05/2023 в 14:00, напомнить за день: 2023-05-14, контакты: +79991234567, (8-987)654-32-10") == \
-           "Встреча назначена на <DATE> в 14:00, напомнить за день: <DATE>, контакты: +<PHONE>, (<PHONE>"
+           "Встреча назначена на <DATE> в 14:00, напомнить за день: <DATE>, контакты: <PHONE>, ( <PHONE>"
 
     # Тест-кейс 8: Много различных числовых значений
     print(make_anonym("Код заказа: 123456, количество: 7 шт., стоимость: 12345.67 руб., срок доставки: 31.12.2023"))
@@ -1057,14 +972,14 @@ def test_all():
         "Филиал №123, адрес: г. Москва, ул. Примерная, д. 12, тел.: +7(495)123-45-67, email: office@company.ru, директор: Иванов И.И., СНИЛС: 987-654-321 01"))
     assert make_anonym(
         "Филиал №123, адрес: г. Москва, ул. Примерная, д. 12, комн 9 тел.: +7(495)123-45-67, email: office@company.ru, директор: Иванов И.И., СНИЛС: 987-654-321 01") == \
-           "<ORG><0>, адрес: г. <LOC><0>, ул. <STREET>, д. <BNUM>, кв. <ANUM> тел.: +<PHONE>, email: <EMAIL>, директор: <PER><0>, СНИЛС: <SNILS>"
+           "<ORG><0>, адрес: г. <LOC><0>, ул. <STREET>, д. <BNUM>, кв. <ANUM> тел.: <PHONE>, email: <EMAIL>, директор: <PER><0>, СНИЛС: <SNILS>"
 
     # Тест-кейс 10: Экспортные данные с множеством параметров
     print(make_anonym(
         "Экспортная накладная №789456 от 2023-07-15, получатель: John Doe, тел.: +1 (202) 555-0133, email: john.doe@example.com, сумма: 12345.67 $, СНИЛС отправителя: 654-321-098 01"))
     assert make_anonym(
         "Экспортная накладная №123456 от 2023-07-15, получатель: John Doe, тел.: +1 (202) 555-0133, email: john.doe@example.com, сумма: 12345.67 $, СНИЛС отправителя: 654-321-098 01") == \
-           "Экспортная накладная №123456 от <DATE>, получатель: John Doe, тел.: +<PHONE>, email: <EMAIL>, сумма: <SUM>$, СНИЛС отправителя: <SNILS>"
+           "Экспортная накладная №123456 от <DATE>, получатель: John Doe, тел.: <PHONE>, email: <EMAIL>, сумма: <SUM>$, СНИЛС отправителя: <SNILS>"
 
     print(make_anonym(
         "Экспортная накладная №789456 от 2023-07-15, получатель: John Doe, тел.: +1 (202) 555-0133, email: john.doe@example.com, сумма: 12345.67 $, СНИЛС отправителя: 654-321-098 01",
