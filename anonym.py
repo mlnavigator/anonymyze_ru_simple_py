@@ -202,6 +202,22 @@ def replace_inn(text: str) -> str:
     return text.strip()
 
 
+def replace_index(text: str) -> str:
+    patterns = [
+        'Индекс:?\s*(\d{6})(?:[^\d]|$)',
+        '<CITY>.{0,20}?(\d{6})(?:[^\d]|$)',
+        '(?:^|[^\d])(\d{6})[^\d].{0,20}?<CITY>',
+        '<LOC>.{0,20}(\d{6})(?:[^\d]|$)',
+        '(?:^|[^\d])(\d{6})[^\d].{0,20}?<LOC>',
+    ]
+
+    for pattern in patterns:
+        text = re.sub(pattern, lambda m: m.group(0).replace(m.group(1), '<INDEX>'), text, flags=re.IGNORECASE)
+
+    text = re.sub(r'\s*<INDEX>', " <INDEX>", text)
+    return text.strip()
+
+
 def replace_kpp(text: str) -> str:
     pattern = r'КПП:\s*\d*'
     text = re.sub(pattern, 'КПП: <KPP>', text)
@@ -576,6 +592,9 @@ def fake_tag(text: str) -> str:
     pattern = r'<GUID>'
     text = re.sub(pattern, lambda m: str(uuid4()), text)
 
+    pattern = r'<INDEX>'
+    text = re.sub(pattern, lambda m: generate_num_s(6), text)
+
     return text
 
 
@@ -613,6 +632,7 @@ def make_anonym(text, type_='token', repalce_digits=False):
     text = replace_city(text)
 
     text = replace_fioii(text)
+    text = replace_index(text)
 
     if type_ == 'fake':
         text = fake_tag(text)
@@ -1046,6 +1066,26 @@ def test_all():
     # Тест-кейс 20: Сложный текст с разными вариантами
     assert replace_apartment(
         "APT 89, КВ. 100, APPART 123, FLAT 45.") == "кв. <ANUM>, кв. <ANUM>, кв. <ANUM>, кв. <ANUM>."
+
+    assert replace_index("Индекс: 123456") == "Индекс: <INDEX>"
+
+    # Тест 2: Замена индекса в строке с городом перед индексом
+    assert replace_index("<LOC>, 654321, ул. Ленина") == "<LOC>, <INDEX>, ул. Ленина"
+
+    # Тест 3: Замена индекса в строке с городом после индекса
+    assert replace_index("123456, г. <CITY>") == "<INDEX>, г. <CITY>"
+
+    # Тест 4: Замена индекса в строке с локацией перед индексом
+    assert replace_index("Район: <LOC>, 987654") == "Район: <LOC>, <INDEX>"
+
+    # Тест 6: Проверка замены нескольких индексов в одной строке
+    assert replace_index("Индекс: 123456, Москва, 654321") == "Индекс: <INDEX>, Москва, 654321"
+
+    # Тест 7: Проверка строки без индекса
+    assert replace_index("Адрес: ул. Пушкина, д. 105678") == "Адрес: ул. Пушкина, д. 105678"
+
+    # Тест 10: Проверка строки с неполным индексом (меньше 6 цифр)
+    assert replace_index("Индекс: 12345") == "Индекс: 12345"
 
     # Тест-кейс 1: Смешанные данные с телефонами, email и датами
     print(make_anonym("Контакты: +7(999)123-45-67, example@example.com, Дата рождения: 31.12.2000"))
