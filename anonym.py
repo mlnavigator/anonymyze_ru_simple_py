@@ -46,10 +46,11 @@ fake = Faker('ru_RU')
 #### NER NATASHA ####
 
 def make_stem(t: str) -> str:
-    return t.lower()[:4]
+    t = str(t)
+    return t.strip().lower()[:4]
 
 
-def make_norm(text):
+def make_norm(text: str) -> str:
     parts = text.split()
     return ' '.join(sorted(set([make_stem(t) for t in parts])))
 
@@ -67,6 +68,7 @@ def sim_pref(w1, w2):
             break
         m += 1
     m -= 1
+    m = max(0, m)
     sc = (m/ma + m/mi) / 2
     return sc
 
@@ -155,12 +157,12 @@ def generate_num_s(n: int) -> str:
     return ''.join(random.choices('0123456789', k=n))
 
 
-def generate_city():
+def generate_city() -> str:
     a = fake.address()
     return a.split(',')[0].strip()
 
 
-def generate_street():
+def generate_street() -> str:
     a = fake.address()
     return a.split(',')[1].strip()
 
@@ -180,7 +182,7 @@ def replace_email(text: str) -> str:
     return text.strip()
 
 
-def replace_snils(text: str, type_='token') -> str:
+def replace_snils(text: str) -> str:
     pattern = r"\b\d{3}[-\s]?\d{3}[-\s]?\d{3} \d{2}\b"
     text = re.sub(pattern, "<SNILS>", text)
     text = re.sub(r'\s*<SNILS>', " <SNILS>", text)
@@ -707,13 +709,8 @@ def test_all():
 
     assert replace_snils("СНИЛС 123-456-789 01, мое имя Иван") == "СНИЛС <SNILS>, мое имя Иван"
     assert replace_snils("СНИЛС: 123-456-789 01, мое имя Иван") == "СНИЛС: <SNILS>, мое имя Иван"
-    # assert replace_snils("СНИЛС 123456789-01, мое имя Иван") == "СНИЛС <SNILS>, мое имя Иван"
-    # assert replace_snils("СНИЛС: 12345678901, мое имя Иван") == "СНИЛС: <SNILS>, мое имя Иван"
     assert replace_snils("СНИЛС: 123 456 789 01, мое имя Иван") == "СНИЛС: <SNILS>, мое имя Иван"
 
-    print(replace_snils("СНИЛС: 123 456 789 01, мое имя Иван", 'fake'))
-
-    print(replace_money('Сумма: 1000 рублей'))
     assert replace_money('Сумма: 1000 слов') == 'Сумма: 1000 слов'
     assert replace_money("Сумма: 1000 рублей") == "Сумма: <SUM> рублей"
     assert replace_money('Сумма: 10.00 рублей') == 'Сумма: <SUM> рублей'
